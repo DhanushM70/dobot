@@ -324,6 +324,16 @@
             color: var(--red);
         }
         
+        .status.demo::before {
+            content: "[ DEMO MODE ]";
+            color: var(--yellow);
+        }
+        
+        .status.demo {
+            border-color: var(--yellow);
+            color: var(--yellow);
+        }
+        
         .icon {
             display: block;
             margin: 0 auto 15px auto;
@@ -372,6 +382,10 @@
             color: var(--yellow);
         }
         
+        .console-output .info {
+            color: var(--blue);
+        }
+        
         .blink {
             animation: blink 1s steps(1) infinite;
         }
@@ -410,6 +424,16 @@
             100% { transform: translateY(-100px) rotate(360deg); }
         }
         
+        .demo-notice {
+            background: rgba(255, 255, 0, 0.1);
+            border: 1px solid var(--yellow);
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--yellow);
+        }
+        
         @media (max-width: 768px) {
             .button-grid {
                 grid-template-columns: 1fr;
@@ -444,10 +468,14 @@
         
         <h1>DOBOT WEB CONTROL TERMINAL</h1>
         
+        <div class="demo-notice">
+            ⚠️ DEMO MODE: This is a frontend simulation. For full functionality, deploy with a Python backend server.
+        </div>
+        
         <div class="system-info">
             <div class="info-item">
                 <span class="info-label">CONNECTION:</span>
-                <span class="info-value" id="connectionText">CHECKING...</span>
+                <span class="info-value" id="connectionText">DEMO MODE</span>
             </div>
             <div class="info-item">
                 <span class="info-label">ACTIVE PROCESSES:</span>
@@ -494,11 +522,11 @@
             EMERGENCY STOP - TERMINATE ALL PROCESSES
         </button>
         
-        <div class="status" id="status">SYSTEM INITIALIZING <span class="blink">_</span></div>
+        <div class="status" id="status">DEMO MODE ACTIVE <span class="blink">_</span></div>
         
         <div class="console-output" id="console">
             <p class="success">> DOBOT WEB CONTROL SYSTEM INITIALIZED</p>
-            <p class="warning">> ESTABLISHING CONNECTION TO BACKEND SERVICES...</p>
+            <p class="warning">> RUNNING IN DEMONSTRATION MODE</p>
         </div>
     </div>
 
@@ -513,8 +541,9 @@
                 this.systemTimeEl = document.getElementById('systemTime');
                 this.lastCommandEl = document.getElementById('lastCommand');
                 
-                this.isConnected = false;
+                this.isConnected = true; // Demo mode - always connected
                 this.activeProcesses = [];
+                this.processCounter = 0;
                 
                 this.init();
             }
@@ -522,12 +551,13 @@
             init() {
                 this.setupEventListeners();
                 this.startSystemClock();
-                this.checkSystemStatus();
+                this.updateConnectionStatus();
                 this.createBinaryBackground();
                 this.startInitSequence();
                 
-                // Check status every 5 seconds
-                setInterval(() => this.checkSystemStatus(), 5000);
+                // Set demo mode status
+                this.statusEl.className = "status demo";
+                this.statusEl.innerHTML = "DEMO MODE ACTIVE <span class='blink'>_</span>";
             }
             
             setupEventListeners() {
@@ -563,6 +593,11 @@
                         }, 10000);
                     }, i * 500);
                 }
+                
+                // Continuously create new binary elements
+                setInterval(() => {
+                    this.createBinaryBackground();
+                }, 10000);
             }
             
             generateRandomBinary() {
@@ -574,35 +609,10 @@
                 return result;
             }
             
-            async checkSystemStatus() {
-                try {
-                    const response = await fetch('/api/dobot/status');
-                    const data = await response.json();
-                    
-                    this.isConnected = data.status === 'online';
-                    this.activeProcesses = data.activeProcesses || [];
-                    
-                    this.updateConnectionStatus();
-                    this.activeProcessesEl.textContent = this.activeProcesses.length;
-                    
-                    if (this.isConnected && this.statusEl.textContent.includes('INITIALIZING')) {
-                        this.statusEl.className = "status";
-                        this.statusEl.innerHTML = "SYSTEM READY <span class='blink'>_</span>";
-                        this.logToConsole("BACKEND CONNECTION ESTABLISHED", 'success');
-                        this.logToConsole("ALL SYSTEMS OPERATIONAL", 'success');
-                    }
-                    
-                } catch (error) {
-                    this.isConnected = false;
-                    this.updateConnectionStatus();
-                    console.error('Status check failed:', error);
-                }
-            }
-            
             updateConnectionStatus() {
                 if (this.isConnected) {
                     this.connectionStatusEl.className = 'status-indicator';
-                    this.connectionTextEl.textContent = 'ONLINE';
+                    this.connectionTextEl.textContent = 'DEMO MODE';
                 } else {
                     this.connectionStatusEl.className = 'status-indicator offline';
                     this.connectionTextEl.textContent = 'OFFLINE';
@@ -610,76 +620,112 @@
             }
             
             async sendCommand(command, commandName) {
-                if (!this.isConnected) {
-                    this.logToConsole("ERROR: BACKEND CONNECTION NOT AVAILABLE", 'error');
-                    return;
-                }
-                
                 this.disableButtons();
                 this.statusEl.className = "status running";
-                this.statusEl.innerHTML = `EXECUTING ${commandName} <span class="loading-spinner"></span>`;
+                this.statusEl.innerHTML = `SIMULATING ${commandName} <span class="loading-spinner"></span>`;
                 this.lastCommandEl.textContent = commandName;
                 
                 this.logToConsole(`INITIATING ${commandName} SEQUENCE...`, 'warning');
+                this.logToConsole(`DEMO: Simulating Python script execution`, 'info');
                 
-                try {
-                    const response = await fetch('/api/dobot/command', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ command: command })
-                    });
+                // Simulate process execution
+                this.processCounter++;
+                const processId = this.processCounter;
+                this.activeProcesses.push(processId);
+                this.activeProcessesEl.textContent = this.activeProcesses.length;
+                
+                // Simulate different execution times and outcomes
+                const executionTime = Math.random() * 3000 + 2000; // 2-5 seconds
+                
+                setTimeout(() => {
+                    const success = Math.random() > 0.2; // 80% success rate
                     
-                    const data = await response.json();
-                    
-                    if (data.status === "error") {
-                        this.statusEl.className = "status error";
-                        this.statusEl.innerHTML = `ERROR: ${data.message} <span class='blink'>_</span>`;
-                        this.logToConsole(`ERROR ENCOUNTERED: ${data.message}`, 'error');
-                    } else {
+                    if (success) {
                         this.statusEl.className = "status running";
-                        this.statusEl.innerHTML = `${commandName} ACTIVE <span class='blink'>_</span>`;
-                        this.logToConsole(`${commandName} PROCESS LAUNCHED SUCCESSFULLY`, 'success');
-                        this.logToConsole("MONITORING PROCESS EXECUTION...", 'warning');
+                        this.statusEl.innerHTML = `${commandName} COMPLETED <span class='blink'>_</span>`;
+                        this.logToConsole(`${commandName} PROCESS COMPLETED SUCCESSFULLY`, 'success');
+                        this.simulateProcessOutput(commandName);
+                    } else {
+                        this.statusEl.className = "status error";
+                        this.statusEl.innerHTML = `ERROR: ${commandName} FAILED <span class='blink'>_</span>`;
+                        this.logToConsole(`ERROR: ${commandName} simulation failed`, 'error');
                     }
                     
-                } catch (error) {
-                    console.error('Command failed:', error);
-                    this.statusEl.innerHTML = "CONNECTION ERROR <span class='blink'>_</span>";
-                    this.statusEl.className = "status error";
-                    this.logToConsole("CRITICAL ERROR: CONNECTION FAILURE TO BACKEND SERVICES", 'error');
-                } finally {
+                    // Remove process from active list
+                    const index = this.activeProcesses.indexOf(processId);
+                    if (index > -1) {
+                        this.activeProcesses.splice(index, 1);
+                        this.activeProcessesEl.textContent = this.activeProcesses.length;
+                    }
+                    
                     this.enableButtons();
-                }
+                    
+                    // Return to demo mode after 3 seconds
+                    setTimeout(() => {
+                        this.statusEl.className = "status demo";
+                        this.statusEl.innerHTML = "DEMO MODE ACTIVE <span class='blink'>_</span>";
+                    }, 3000);
+                    
+                }, executionTime);
+            }
+            
+            simulateProcessOutput(commandName) {
+                const outputs = {
+                    'COLOR TEACHING': [
+                        'Loading OpenCV modules...',
+                        'Initializing camera feed...',
+                        'Color calibration complete',
+                        'Saved color profiles to JSON'
+                    ],
+                    'COLOR DETECTION': [
+                        'Loading taught colors...',
+                        'Processing camera input...',
+                        'Detected 3 colored objects',
+                        'Calculating robot coordinates...',
+                        'Goal stack sequence ready'
+                    ],
+                    'CUBE DETECTION': [
+                        'Loading homography matrix...',
+                        'Scanning for cube objects...',
+                        'Found 2 cubes in workspace',
+                        'Position data saved to JSON'
+                    ],
+                    'HOMOGRAPHY CALIBRATION': [
+                        'Capturing calibration points...',
+                        'Computing transformation matrix...',
+                        'Calibration accuracy: 98.7%',
+                        'Matrix saved successfully'
+                    ]
+                };
+                
+                const messages = outputs[commandName] || ['Process completed'];
+                
+                messages.forEach((message, index) => {
+                    setTimeout(() => {
+                        this.logToConsole(`DEMO: ${message}`, 'info');
+                    }, index * 800);
+                });
             }
             
             async emergencyStop() {
                 this.logToConsole("EMERGENCY STOP INITIATED", 'error');
                 this.disableButtons();
                 
-                try {
-                    const response = await fetch('/api/dobot/command', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ command: 'q' })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    this.statusEl.className = "status";
-                    this.statusEl.innerHTML = "ALL PROCESSES TERMINATED <span class='blink'>_</span>";
-                    this.lastCommandEl.textContent = 'EMERGENCY STOP';
-                    this.logToConsole("ALL ACTIVE PROCESSES TERMINATED", 'success');
-                    this.logToConsole("SYSTEM READY FOR NEW COMMANDS", 'success');
-                    
-                } catch (error) {
-                    this.logToConsole("ERROR DURING EMERGENCY STOP", 'error');
-                } finally {
+                this.statusEl.className = "status";
+                this.statusEl.innerHTML = "ALL PROCESSES TERMINATED <span class='blink'>_</span>";
+                this.lastCommandEl.textContent = 'EMERGENCY STOP';
+                this.logToConsole("DEMO: All simulated processes terminated", 'success');
+                this.logToConsole("SYSTEM READY FOR NEW COMMANDS", 'success');
+                
+                // Clear active processes
+                this.activeProcesses = [];
+                this.activeProcessesEl.textContent = '0';
+                
+                setTimeout(() => {
                     this.enableButtons();
-                }
+                    this.statusEl.className = "status demo";
+                    this.statusEl.innerHTML = "DEMO MODE ACTIVE <span class='blink'>_</span>";
+                }, 2000);
             }
             
             disableButtons() {
@@ -711,9 +757,11 @@
                     { msg: "LOADING DOBOT CONTROL MODULES...", type: 'warning', delay: 1000 },
                     { msg: "INITIALIZING COMPUTER VISION SYSTEMS...", type: 'warning', delay: 1500 },
                     { msg: "CALIBRATING ROBOTIC ARM INTERFACE...", type: 'warning', delay: 2000 },
-                    { msg: "ESTABLISHING PYTHON BACKEND CONNECTION...", type: 'warning', delay: 2500 },
+                    { msg: "DEMO MODE: Python backend simulation active", type: 'info', delay: 2500 },
                     { msg: "VERIFYING SYSTEM INTEGRITY...", type: 'warning', delay: 3000 },
-                    { msg: "SYSTEM INITIALIZATION COMPLETE", type: 'success', delay: 3500 }
+                    { msg: "DEMO SYSTEM INITIALIZATION COMPLETE", type: 'success', delay: 3500 },
+                    { msg: "NOTE: This is a demonstration interface", type: 'warning', delay: 4000 },
+                    { msg: "For full functionality, deploy with Python backend", type: 'info', delay: 4500 }
                 ];
                 
                 initMessages.forEach(({ msg, type, delay }) => {
