@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOBOT WEB CONTROL TERMINAL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        :root {
+            --terminal-green: #0f0;
+            --terminal-dark: #000;
+            --terminal-background: #111;
+            --glow-color: #0f0;
+            --red: #f00;
+            --blue: #0af;
+            --yellow: #ff0;
+            --pink: #f0f;
+            --orange: #ff8c00;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--terminal-background);
+            color: var(--terminal-green);
+            padding: 20px;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 50, 0, 0.25) 50%
+            );
+            background-size: 100% 2px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(0, 255, 0, 0.1);
+            z-index: 3;
+            animation: scan 6s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        
+        .container {
+            border: 2px solid var(--terminal-green);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 900px;
+            padding: 25px;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+            animation: pulse 2s infinite alternate;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        @keyframes pulse {
+            from { box-shadow: 0 0 10px rgba(0, 255, 0, 0.4); }
+            to { box-shadow: 0 0 25px rgba(0, 255, 0, 0.7); }
+        }
+        
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--terminal-green);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .terminal-title {
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+        
+        .terminal-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .terminal-controls span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--terminal-green);
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--terminal-green);
+            animation: blink 1s infinite;
+        }
+        
+        .status-indicator.offline {
+            background-color: var(--red);
+        }
+        
+        h1 {
+            font-family: 'VT323', monospace;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 36px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px var(--glow-color);
+        }
+        
+        .system-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 4px;
+            background: rgba(0, 255, 0, 0.05);
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .info-label {
+            color: rgba(0, 255, 0, 0.8);
+        }
+        
+        .info-value {
+            color: var(--terminal-green);
+            font-weight: bold;
+        }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-button {
+            background-color: var(--terminal-dark);
+            color: var(--terminal-green);
+            border: 1px solid var(--terminal-green);
+            border-radius: 4px;
+            padding: 20px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .control-button:hover {
+            background-color: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .control-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .control-button:disabled:hover {
+            background-color: var(--terminal-dark);
+            box-shadow: none;
+            transform: none;
+        }
+        
+        #colorTeaching {
+            color: var(--blue);
+            border-color: var(--blue);
+        }
+        
+        #colorTeaching:hover:not(:disabled) {
+            background-color: rgba(0, 170, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+        }
+        
+        #colorDetection {
+            color: var(--yellow);
+            border-color: var(--yellow);
+        }
+        
+        #colorDetection:hover:not(:disabled) {
+            background-color: rgba(255, 255, 0, 0.1);
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+        }
+        
+        #cubeDetection {
+            color: var(--pink);
+            border-color: var(--pink);
+        }
+        
+        #cubeDetection:hover:not(:disabled) {
+            background-color: rgba(255, 0, 255, 0.1);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+        }
+        
+        #homographyMatrix {
+            color: var(--orange);
+            border-color: var(--orange);
+        }
+        
+        #homographyMatrix:hover:not(:disabled) {
+            background-color: rgba(255, 140, 0, 0.1);
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.5);
+        }
+        
+        .emergency-stop {
+            background-color: var(--terminal-dark);
+            color: var(--red);
+            border-color: var(--red);
+            margin-top: 10px;
+            width: 100%;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .emergency-stop:hover:not(:disabled) {
+            background-color: rgba(255, 0, 0, 0.1);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid var(--terminal-green);
+            background-color: rgba(0, 255, 0, 0.05);
+            text-align: center;
+            font-weight: bold;
+            position: relative;
+            border-radius: 4px;
+        }
+        
+        .status::before {
+            content: "[ STATUS ]";
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background-color: var(--terminal-background);
+            padding: 0 10px;
+            font-size: 12px;
+        }
+        
+        .status.running {
+            border-color: var(--blue);
+            color: var(--blue);
+            animation: blink-blue 1s infinite;
+        }
+        
+        @keyframes blink-blue {
+            0%, 49% { border-color: var(--blue); }
+            50%, 100% { border-color: #003355; }
+        }
+        
+        .status.running::before {
+            content: "[ RUNNING ]";
+            color: var(--blue);
+        }
+        
+        .status.error {
+            border-color: var(--red);
+            color: var(--red);
+            animation: blink-red 0.5s infinite;
+        }
+        
+        @keyframes blink-red {
+            0%, 49% { border-color: var(--red); }
+            50%, 100% { border-color: #550000; }
+        }
+        
+        .status.error::before {
+            content: "[ ERROR ]";
+            color: var(--red);
+        }
+        
+        .icon {
+            display: block;
+            margin: 0 auto 15px auto;
+            font-size: 32px;
+        }
+        
+        .button-description {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 8px;
+            line-height: 1.3;
+        }
+        
+        .console-output {
+            height: 150px;
+            overflow-y: auto;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--terminal-green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            border-radius: 4px;
+        }
+        
+        .console-output p {
+            margin: 0;
+            padding: 2px 0;
+            line-height: 1.3;
+        }
+        
+        .console-output .timestamp {
+            color: rgba(0, 255, 0, 0.6);
+        }
+        
+        .console-output .success {
+            color: var(--terminal-green);
+        }
+        
+        .console-output .error {
+            color: var(--red);
+        }
+        
+        .console-output .warning {
+            color: var(--yellow);
+        }
+        
+        .blink {
+            animation: blink 1s steps(1) infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 255, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--terminal-green);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .random-binary {
+            position: absolute;
+            color: rgba(0, 255, 0, 0.1);
+            font-size: 10px;
+            z-index: 1;
+            user-select: none;
+            animation: float 10s linear infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .button-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .system-info {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scan-line"></div>
+    
+    <div class="container">
+        <div class="terminal-header">
+            <div class="terminal-title">SYSTEM://DOBOT_WEB_CONTROL v2.0</div>
+            <div class="terminal-controls">
+                <span></span>
+                <span></span>
+                <span class="status-indicator" id="connectionStatus"></span>
+            </div>
+        </div>
+        
+        <h1>DOBOT WEB CONTROL TERMINAL</h1>
+        
+        <div class="system-info">
+            <div class="info-item">
+                <span class="info-label">CONNECTION:</span>
+                <span class="info-value" id="connectionText">CHECKING...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">ACTIVE PROCESSES:</span>
+                <span class="info-value" id="activeProcesses">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">SYSTEM TIME:</span>
+                <span class="info-value" id="systemTime">--:--:--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">LAST COMMAND:</span>
+                <span class="info-value" id="lastCommand">NONE</span>
+            </div>
+        </div>
+        
+        <div class="button-grid">
+            <button class="control-button" id="colorTeaching">
+                <span class="icon">🎨</span>
+                <div>COLOR TEACHING MODULE</div>
+                <div class="button-description">Train the system to recognize specific colors for cube identification</div>
+            </button>
+            
+            <button class="control-button" id="colorDetection">
+                <span class="icon">🔍</span>
+                <div>COLOR DETECTION & GOAL STACK</div>
+                <div class="button-description">Detect colored cubes and execute goal stacking sequence</div>
+            </button>
+            
+            <button class="control-button" id="cubeDetection">
+                <span class="icon">📦</span>
+                <div>CUBE POSITION DETECTION</div>
+                <div class="button-description">Identify and map cube positions in 3D space</div>
+            </button>
+            
+            <button class="control-button" id="homographyMatrix">
+                <span class="icon">📐</span>
+                <div>HOMOGRAPHY MATRIX CALIBRATION</div>
+                <div class="button-description">Calibrate camera-to-robot coordinate transformation</div>
+            </button>
+        </div>
+        
+        <button class="control-button emergency-stop" id="emergencyStop">
+            <span class="icon">🛑</span>
+            EMERGENCY STOP - TERMINATE ALL PROCESSES
+        </button>
+        
+        <div class="status" id="status">SYSTEM INITIALIZING <span class="blink">_</span></div>
+        
+        <div class="console-output" id="console">
+            <p class="success">> DOBOT WEB CONTROL SYSTEM INITIALIZED</p>
+            <p class="warning">> ESTABLISHING CONNECTION TO BACKEND SERVICES...</p>
+        </div>
+    </div>
+
+    <script>
+        class DobotController {
+            constructor() {
+                this.statusEl = document.getElementById('status');
+                this.consoleEl = document.getElementById('console');
+                this.connectionStatusEl = document.getElementById('connectionStatus');
+                this.connectionTextEl = document.getElementById('connectionText');
+                this.activeProcessesEl = document.getElementById('activeProcesses');
+                this.systemTimeEl = document.getElementById('systemTime');
+                this.lastCommandEl = document.getElementById('lastCommand');
+                
+                this.isConnected = false;
+                this.activeProcesses = [];
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.startSystemClock();
+                this.checkSystemStatus();
+                this.createBinaryBackground();
+                this.startInitSequence();
+                
+                // Check status every 5 seconds
+                setInterval(() => this.checkSystemStatus(), 5000);
+            }
+            
+            setupEventListeners() {
+                document.getElementById('colorTeaching').addEventListener('click', () => this.sendCommand('2', 'COLOR TEACHING'));
+                document.getElementById('colorDetection').addEventListener('click', () => this.sendCommand('3', 'COLOR DETECTION'));
+                document.getElementById('cubeDetection').addEventListener('click', () => this.sendCommand('4', 'CUBE DETECTION'));
+                document.getElementById('homographyMatrix').addEventListener('click', () => this.sendCommand('5', 'HOMOGRAPHY CALIBRATION'));
+                document.getElementById('emergencyStop').addEventListener('click', () => this.emergencyStop());
+            }
+            
+            startSystemClock() {
+                setInterval(() => {
+                    const now = new Date();
+                    this.systemTimeEl.textContent = now.toLocaleTimeString();
+                }, 1000);
+            }
+            
+            createBinaryBackground() {
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(() => {
+                        const binary = document.createElement('div');
+                        binary.className = 'random-binary';
+                        binary.style.left = `${Math.random() * 100}%`;
+                        binary.style.animationDelay = `${Math.random() * 10}s`;
+                        binary.textContent = this.generateRandomBinary();
+                        document.body.appendChild(binary);
+                        
+                        // Remove after animation
+                        setTimeout(() => {
+                            if (binary.parentNode) {
+                                binary.parentNode.removeChild(binary);
+                            }
+                        }, 10000);
+                    }, i * 500);
+                }
+            }
+            
+            generateRandomBinary() {
+                let result = '';
+                const length = Math.floor(Math.random() * 15) + 5;
+                for (let i = 0; i < length; i++) {
+                    result += Math.round(Math.random());
+                }
+                return result;
+            }
+            
+            async checkSystemStatus() {
+                try {
+                    const response = await fetch('/api/dobot/status');
+                    const data = await response.json();
+                    
+                    this.isConnected = data.status === 'online';
+                    this.activeProcesses = data.activeProcesses || [];
+                    
+                    this.updateConnectionStatus();
+                    this.activeProcessesEl.textContent = this.activeProcesses.length;
+                    
+                    if (this.isConnected && this.statusEl.textContent.includes('INITIALIZING')) {
+                        this.statusEl.className = "status";
+                        this.statusEl.innerHTML = "SYSTEM READY <span class='blink'>_</span>";
+                        this.logToConsole("BACKEND CONNECTION ESTABLISHED", 'success');
+                        this.logToConsole("ALL SYSTEMS OPERATIONAL", 'success');
+                    }
+                    
+                } catch (error) {
+                    this.isConnected = false;
+                    this.updateConnectionStatus();
+                    console.error('Status check failed:', error);
+                }
+            }
+            
+            updateConnectionStatus() {
+                if (this.isConnected) {
+                    this.connectionStatusEl.className = 'status-indicator';
+                    this.connectionTextEl.textContent = 'ONLINE';
+                } else {
+                    this.connectionStatusEl.className = 'status-indicator offline';
+                    this.connectionTextEl.textContent = 'OFFLINE';
+                }
+            }
+            
+            async sendCommand(command, commandName) {
+                if (!this.isConnected) {
+                    this.logToConsole("ERROR: BACKEND CONNECTION NOT AVAILABLE", 'error');
+                    return;
+                }
+                
+                this.disableButtons();
+                this.statusEl.className = "status running";
+                this.statusEl.innerHTML = `EXECUTING ${commandName} <span class="loading-spinner"></span>`;
+                this.lastCommandEl.textContent = commandName;
+                
+                this.logToConsole(`INITIATING ${commandName} SEQUENCE...`, 'warning');
+                
+                try {
+                    const response = await fetch('/api/dobot/command', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ command: command })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === "error") {
+                        this.statusEl.className = "status error";
+                        this.statusEl.innerHTML = `ERROR: ${data.message} <span class='blink'>_</span>`;
+                        this.logToConsole(`ERROR ENCOUNTERED: ${data.message}`, 'error');
+                    } else {
+                        this.statusEl.className = "status running";
+                        this.statusEl.innerHTML = `${commandName} ACTIVE <span class='blink'>_</span>`;
+                        this.logToConsole(`${commandName} PROCESS LAUNCHED SUCCESSFULLY`, 'success');
+                        this.logToConsole("MONITORING PROCESS EXECUTION...", 'warning');
+                    }
+                    
+                } catch (error) {
+                    console.error('Command failed:', error);
+                    this.statusEl.innerHTML = "CONNECTION ERROR <span class='blink'>_</span>";
+                    this.statusEl.className = "status error";
+                    this.logToConsole("CRITICAL ERROR: CONNECTION FAILURE TO BACKEND SERVICES", 'error');
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            async emergencyStop() {
+                this.logToConsole("EMERGENCY STOP INITIATED", 'error');
+                this.disableButtons();
+                
+                try {
+                    const response = await fetch('/api/dobot/command', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ command: 'q' })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    this.statusEl.className = "status";
+                    this.statusEl.innerHTML = "ALL PROCESSES TERMINATED <span class='blink'>_</span>";
+                    this.lastCommandEl.textContent = 'EMERGENCY STOP';
+                    this.logToConsole("ALL ACTIVE PROCESSES TERMINATED", 'success');
+                    this.logToConsole("SYSTEM READY FOR NEW COMMANDS", 'success');
+                    
+                } catch (error) {
+                    this.logToConsole("ERROR DURING EMERGENCY STOP", 'error');
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            disableButtons() {
+                const buttons = document.querySelectorAll('.control-button');
+                buttons.forEach(button => button.disabled = true);
+            }
+            
+            enableButtons() {
+                const buttons = document.querySelectorAll('.control-button');
+                buttons.forEach(button => button.disabled = false);
+            }
+            
+            logToConsole(message, type = 'success') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('p');
+                logEntry.className = type;
+                logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+                this.consoleEl.appendChild(logEntry);
+                this.consoleEl.scrollTop = this.consoleEl.scrollHeight;
+                
+                // Keep only last 50 messages
+                while (this.consoleEl.children.length > 50) {
+                    this.consoleEl.removeChild(this.consoleEl.firstChild);
+                }
+            }
+            
+            startInitSequence() {
+                const initMessages = [
+                    { msg: "LOADING DOBOT CONTROL MODULES...", type: 'warning', delay: 1000 },
+                    { msg: "INITIALIZING COMPUTER VISION SYSTEMS...", type: 'warning', delay: 1500 },
+                    { msg: "CALIBRATING ROBOTIC ARM INTERFACE...", type: 'warning', delay: 2000 },
+                    { msg: "ESTABLISHING PYTHON BACKEND CONNECTION...", type: 'warning', delay: 2500 },
+                    { msg: "VERIFYING SYSTEM INTEGRITY...", type: 'warning', delay: 3000 },
+                    { msg: "SYSTEM INITIALIZATION COMPLETE", type: 'success', delay: 3500 }
+                ];
+                
+                initMessages.forEach(({ msg, type, delay }) => {
+                    setTimeout(() => this.logToConsole(msg, type), delay);
+                });
+            }
+        }
+        
+        // Initialize the controller when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new DobotController();
+        });
+    </script>
+</body>
+</html>
